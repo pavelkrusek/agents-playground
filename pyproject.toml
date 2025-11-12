@@ -1,7 +1,7 @@
 [project]
-name = "adk-playground"
+name = "agents-playground"
 version = "0.1.0"
-description = ""
+description = "Agents Playground — Google ADK (for now), extensible later"
 authors = [
     { name = "Pavel Krusek", email = "pavel@krusek.dk" }
 ]
@@ -16,8 +16,13 @@ dependencies = [
     "typer (>=0.20.0,<0.21.0)"
 ]
 
+[project.urls]
+Homepage = "https://github.com/pavelkrusek/agents-playground.git"
+Repository = "https://github.com/pavelkrusek/agents-playground.git"
+
 [tool.poetry.scripts]
 adk = "adk_playground.cli:app"
+agents = "adk_playground.cli:app"
 
 [tool.poetry]
 packages = [{ include = "adk_playground", from = "src" }]
