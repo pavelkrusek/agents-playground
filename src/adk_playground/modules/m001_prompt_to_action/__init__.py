@@ -1,6 +1,5 @@
-from .runners import simple
+from .agents import simple
 
 REGISTRY = {
-    "simple": simple.build_runner,
-    # "blog-search": search.build_runner,
+    "m001_simple": simple.build_agent,
 }

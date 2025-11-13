@@ -21,7 +21,7 @@ Homepage = "https://github.com/pavelkrusek/agents-playground.git"
 Repository = "https://github.com/pavelkrusek/agents-playground.git"
 
 [tool.poetry.scripts]
-adk = "adk_playground.cli:app"
+adkp = "adk_playground.cli:app"
 agents = "adk_playground.cli:app"
 
 [tool.poetry]

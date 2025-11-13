@@ -1,20 +1,141 @@
+import asyncio
 import importlib
+import inspect
 import pkgutil
-from typing import Callable
+from pathlib import Path
+from typing import Callable, Any
 
 import typer
+from google.adk.agents import BaseAgent
+from google.adk.runners import Runner
+from loguru import logger
+
+from adk_playground.core.runtime import make_runner
+from adk_playground.core.settings import APP_NAME
 
 app = typer.Typer(help="ADK Playground")
 
-_DISCOVERED: dict[str, Callable[[], object]] = {}
-base_pkg = "adk_playground.modules"
-pkg = importlib.import_module(base_pkg)
-for m in pkgutil.iter_modules(pkg.__path__):
-    mod = importlib.import_module(f"{base_pkg}.{m.name}")
-    reg = getattr(mod, "REGISTRY", {})
-    for cmd, fn in reg.items():
-        _DISCOVERED[cmd] = fn
-        _register(cmd, fn)
+_command_cache: dict[str, Callable[[], Any]] = {}
+
+
+@app.callback()
+def global_options(
+        ctx: typer.Context,
+        session: str = typer.Option("memory", "--session", "-s", help="Session backend: memory|sqlite"),
+        session_dsn: str = typer.Option(None, "--session-dsn", help="e.g. sqlite:///sessions.db"),
+        app_name: str = typer.Option(APP_NAME, "--app-name", help="app name used by the Runner"),
+):
+    ctx.ensure_object(dict)
+    ctx.obj.update({"session": session, "dsn": session_dsn, "app_name": app_name})
+
+
+def _discover_commands() -> dict[str, Callable[[], Any]]:
+    if _command_cache:
+        return _command_cache
+
+    base_pkg = "adk_playground.modules"
+    pkg = importlib.import_module(base_pkg)
+
+    for m in pkgutil.iter_modules(pkg.__path__):
+        try:
+            mod = importlib.import_module(f"{base_pkg}.{m.name}")
+            reg = getattr(mod, "REGISTRY", None)
+            if isinstance(reg, dict):
+                for cmd, fn in reg.items():
+                    if callable(fn):
+                        _command_cache[cmd] = fn
+        except Exception as e:
+            typer.echo(f"⚠️  Failed to load {m.name}: {e}", err=True)
+
+    logger.info("Found {} registered commands", len(_command_cache))
+    return _command_cache
+
+
+def _register_all_typer_commands() -> None:
+    commands = _discover_commands()
+    for cmd_name, build_fn in commands.items():
+        def _make_cmd(name: str, fn: Callable[[], Any]):
+            @app.command(name)
+            def _cmd(ctx: typer.Context, query: str = typer.Argument(..., help="User input for the agent.")):
+                obj = fn()
+                if isinstance(obj, Runner):
+                    runner = obj
+                elif isinstance(obj, BaseAgent):
+                    runner = make_runner(
+                        obj,
+                        session_kind=ctx.obj.get("session"),
+                        session_dsn=ctx.obj.get("dsn"),
+                        app_name=ctx.obj.get("app_name"),
+                    )
+                else:
+                    if hasattr(obj, "build_runner") and inspect.isfunction(obj.build_runner):
+                        runner = obj.build_runner()
+                    else:
+                        raise TypeError(f"{name}: registry builder must return an Agent or Runner, got {type(obj)}")
+
+                asyncio.run(runner.run_debug(query, verbose=True))
+
+            return _cmd
+
+        _make_cmd(cmd_name, build_fn)
+
+
+_register_all_typer_commands()
+
+
+@app.command("list")
+def list_commands():
+    cmds = sorted(_discover_commands().keys())
+    if not cmds:
+        typer.echo("No commands discovered. Make sure your modules expose REGISTRY = { 'name': build_agent, ... }")
+        raise typer.Exit(code=1)
+    typer.echo("Available commands:")
+    for n in cmds:
+        typer.echo(f"  - {n}")
+
+
+@app.command("sync-agents")
+def sync_agents(
+        target: str = typer.Option("adk_agents", "--target", "-t", help="Target folder for ADK Web UI agents"),
+        clean: bool = typer.Option(False, "--clean", help="Delete the target folder before generating"),
+        validate: bool = typer.Option(True, "--validate", help="Validate builders return an Agent during generation"),
+):
+    td = Path(target)
+    if clean and td.exists():
+        import shutil
+        shutil.rmtree(td)
+    td.mkdir(parents=True, exist_ok=True)
+
+    count = 0
+    for name, build_fn in _discover_commands().items():
+        if validate:
+            obj = build_fn()
+            if not isinstance(obj, BaseAgent):
+                raise TypeError(
+                    f"{name}: builder in REGISTRY should return an Agent for ADK Web UI. "
+                    f"Got {type(obj)}. (CLI can wrap Runners, but Web UI needs `root_agent`.)"
+                )
+
+        safe = f"cmd_{name}".replace("-", "_")
+        d = td / safe
+        d.mkdir(parents=True, exist_ok=True)
+
+        (d / "__init__.py").write_text("from . import agent\n", encoding="utf-8")
+
+        module_path = build_fn.__module__
+        fn_name = build_fn.__name__
+        code = (
+            "# Auto-generated by `adkp sync-agents`\n"
+            "import importlib\n"
+            f'_mod = importlib.import_module("{module_path}")\n'
+            f'_build = getattr(_mod, "{fn_name}")\n'
+            "root_agent = _build()\n"
+        )
+        (d / "agent.py").write_text(code, encoding="utf-8")
+        count += 1
+
+    typer.echo(f"Synced {count} agents → {td}/")
+
 
 if __name__ == "__main__":
     app()
