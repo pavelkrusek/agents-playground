@@ -4,7 +4,7 @@ from google.adk.tools import AgentTool
 from adk_playground.core.settings import MODEL
 
 
-# Pattern: Router + specialists (classification → call one tool)
+# Pattern: Router + specialists (classification → call one tool), prompt-based
 def build_agent() -> Agent:
     math_expert = Agent(
         name="math_expert",

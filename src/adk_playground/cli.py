@@ -116,7 +116,7 @@ def sync_agents(
                     f"Got {type(obj)}. (CLI can wrap Runners, but Web UI needs `root_agent`.)"
                 )
 
-        safe = f"cmd_{name}".replace("-", "_")
+        safe = f"{name}".replace("-", "_")
         d = td / safe
         d.mkdir(parents=True, exist_ok=True)
 
