@@ -58,7 +58,7 @@ def get_mcp_toolsets(config_path: str | Path) -> list[McpToolset]:
         cfg = load_mcp_servers(config_path)
         logger.debug("Loaded MCP toolsets {}:", cfg)
         _mcp_toolsets = [
-            create_toolset(name, server_cfg)
+            create_toolset(server_cfg)
             for name, server_cfg in cfg.items()
         ]
     return _mcp_toolsets

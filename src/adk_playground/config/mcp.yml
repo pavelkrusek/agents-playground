@@ -4,3 +4,11 @@ mcpServers:
     command: uv
     args: [ "run", "mcp-wikidata" ]
     cwd: "${MCP_WIKIDATA_DIR}"
+
+  wikipedia_stdio:
+    type: stdio
+    command: uvx
+    args:
+      - --from
+      - wikipedia-mcp-server
+      - wikipedia-mcp

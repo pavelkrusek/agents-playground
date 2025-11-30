@@ -8,7 +8,7 @@ AGENTS_PATH := $(abspath $(AGENTS_DIR))
 HOST        ?= 127.0.0.1
 PORT        ?= 8001 # because 8000 is often occupied
 
-.PHONY: tree list sync web web-dev run
+.PHONY: tree list sync web web-dev run inspect-mcp
 
 tree:
 	@command -v tree >/dev/null 2>&1 && tree -a -I '.git|.venv|__pycache__|*.pyc|.idea' . || echo "Install 'tree' to view project tree."
@@ -33,3 +33,6 @@ run: ## Run a specific command with CLI (e.g., make run CMD=m001_simple Q='...')
 		exit 1; \
 	fi
 	$(ADKP) $(CMD) "$(Q)"
+
+inspect-mcp: ## Inspect available MCP API modules in google.adk.tools.mcp_tool
+	poetry run python scripts/diagnose_mcp.py
