@@ -5,7 +5,8 @@ from typing import Any, Dict
 
 import yaml
 from google.adk.tools import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import SseServerParams
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from mcp import StdioServerParameters
 
 _mcp_toolset: McpToolset = None
 
@@ -30,26 +31,23 @@ def load_mcp_servers(path: str | Path) -> Dict[str, Dict[str, Any]]:
     return data.get("mcpServers", {})
 
 
-def get_mcp_toolsets() -> list[McpToolset]:
-    """Process-wide singleton list of MCPToolset instances (one per server)."""
+def get_mcp_toolset() -> McpToolset:
+    """Process-wide singleton for local mcp-wikidata server (stdio)."""
     global _mcp_toolset
     if _mcp_toolset is None:
-        base_dir = Path(__file__).resolve().parent.parent
-        cfg_path = base_dir / "config" / "mcp.yml"
-        servers = load_mcp_servers(cfg_path)
-
-        toolsets: list[McpToolset] = []
-        for name, cfg in servers.items():
-            url = cfg["url"]
-            toolsets.append(
-                McpToolset(
-                    connection_params=SseServerParams(url=url)
-                )
+        _mcp_toolset = McpToolset(
+            connection_params=StdioConnectionParams(
+                server_params=StdioServerParameters(
+                    command="uv",
+                    args=["run", "mcp-wikidata"],
+                    cwd="/home/pavelk/dev/mcp-wikidata",
+                ),
+                timeout=30,
             )
-        _mcp_toolset = toolsets
+        )
     return _mcp_toolset
 
 
-def get_mcp_tools():
+def get_mcp_tools() -> list[McpToolset]:
     """Convenience: return all MCP tools for use in Agent(..., tools=...)."""
-    return list(get_mcp_toolsets())
+    return [get_mcp_toolset()]

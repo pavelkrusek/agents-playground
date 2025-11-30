@@ -20,6 +20,7 @@ sync: ## Generate shim agents for ADK Web UI
 	$(ADKP) sync-agents --target $(AGENTS_PATH) --clean
 
 web: ## Start ADK Web UI
+	ADK_APP_PACKAGE=$(AGENTS_DIR) \
 	$(ADK) web --host $(HOST) --port $(PORT) $(AGENTS_PATH)
 
 web-dev: ## Generate shims and start Web UI - composite
