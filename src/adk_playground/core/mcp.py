@@ -1,26 +1,19 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Dict
 
 import yaml
 from google.adk.tools import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams, SseConnectionParams
+from loguru import logger
 from mcp import StdioServerParameters
 
-_mcp_toolset: McpToolset = None
+_mcp_toolsets: list[McpToolset] | None = None
 
 
 def load_mcp_servers(path: str | Path) -> Dict[str, Dict[str, Any]]:
-    """
-    Load MCP server definitions from YAML config file.
-    Expected format:
-
-    mcpServers:
-      name:
-        type: sse | ws
-        url: https://...
-    """
     path = Path(path)
     if not path.exists():
         return {}
@@ -31,23 +24,47 @@ def load_mcp_servers(path: str | Path) -> Dict[str, Dict[str, Any]]:
     return data.get("mcpServers", {})
 
 
-def get_mcp_toolset() -> McpToolset:
-    """Process-wide singleton for local mcp-wikidata server (stdio)."""
-    global _mcp_toolset
-    if _mcp_toolset is None:
-        _mcp_toolset = McpToolset(
+# factory
+def create_toolset(cfg: Dict[str, Any]) -> McpToolset:
+    t = cfg.get("type")
+
+    raw_cwd = cfg.get("cwd")
+    cwd = os.path.expandvars(raw_cwd) if isinstance(raw_cwd, str) else None
+
+    if t == "stdio":
+        return McpToolset(
             connection_params=StdioConnectionParams(
                 server_params=StdioServerParameters(
-                    command="uv",
-                    args=["run", "mcp-wikidata"],
-                    cwd="/home/pavelk/dev/mcp-wikidata",
+                    command=cfg["command"],
+                    args=cfg.get("args", []),
+                    cwd=cwd,
                 ),
-                timeout=30,
+                timeout=cfg.get("timeout", 30),
             )
         )
-    return _mcp_toolset
+    elif t == "sse":
+        return McpToolset(
+            connection_params=SseConnectionParams(
+                url=cfg["url"]
+            )
+        )
+    else:
+        raise ValueError(f"Unknown MCP server type: {t}")
+
+
+def get_mcp_toolsets(config_path: str | Path) -> list[McpToolset]:
+    global _mcp_toolsets
+    if _mcp_toolsets is None:
+        cfg = load_mcp_servers(config_path)
+        logger.debug("Loaded MCP toolsets {}:", cfg)
+        _mcp_toolsets = [
+            create_toolset(name, server_cfg)
+            for name, server_cfg in cfg.items()
+        ]
+    return _mcp_toolsets
 
 
 def get_mcp_tools() -> list[McpToolset]:
-    """Convenience: return all MCP tools for use in Agent(..., tools=...)."""
-    return [get_mcp_toolset()]
+    base_dir = Path(__file__).resolve().parent.parent
+    config_path = base_dir / "config" / "mcp.yml"
+    return get_mcp_toolsets(config_path)

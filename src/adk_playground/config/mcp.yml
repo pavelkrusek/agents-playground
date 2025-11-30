@@ -1,4 +1,6 @@
 mcpServers:
-  wikidata:
-    type: sse
-    url: https://wikidata-mcp-mirror.onrender.com/messages/
+  wikidata_stdio:
+    type: stdio
+    command: uv
+    args: [ "run", "mcp-wikidata" ]
+    cwd: "${MCP_WIKIDATA_DIR}"
