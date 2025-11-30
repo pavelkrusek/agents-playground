@@ -1,8 +1,11 @@
 from __future__ import annotations
-# src/kapellmeister/services/composers.py
-from __future__ import annotations
 
 from kapellmeister.models import Composer, ComposerProfile, Work
+
+"""
+Stub service for future custom composer data layer.
+Currently unused — MCP/Wikidata handles data retrieval.
+"""
 
 
 def get_composer_profile(name: str) -> ComposerProfile:

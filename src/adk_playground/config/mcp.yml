@@ -1,0 +1,4 @@
+mcpServers:
+  wikidata:
+    type: sse
+    url: https://wikidata-mcp-mirror.onrender.com/messages/

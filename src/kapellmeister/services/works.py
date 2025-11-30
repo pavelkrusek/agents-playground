@@ -1,7 +1,11 @@
-# src/kapellmeister/services/works.py
 from __future__ import annotations
 
 from kapellmeister.models import Work, WorkFacts
+
+"""
+Stub service for future custom work data layer.
+Currently unused — MCP/Wikidata handles data retrieval.
+"""
 
 
 def get_work_facts(title: str, composer_name: str | None = None) -> WorkFacts:
