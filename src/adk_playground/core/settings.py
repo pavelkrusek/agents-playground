@@ -23,9 +23,9 @@ if not SAFE_BASE.exists() or not SAFE_BASE.is_dir():
     raise RuntimeError(f"TOOLS_SAFE_BASE does not exist or is not a directory: {SAFE_BASE}")
 
 RETRY = types.HttpRetryOptions(
-    attempts=3,
-    exp_base=2,
-    initial_delay=0.5,
+    attempts=2,
+    exp_base=1,
+    initial_delay=1,
     http_status_codes=[429, 500, 503, 504],
 )
 

@@ -7,8 +7,6 @@ mcpServers:
 
   wikipedia_stdio:
     type: stdio
-    command: uvx
-    args:
-      - --from
-      - wikipedia-mcp-server
-      - wikipedia-mcp
+    command: uv
+    args: [ "run", "wikipedia-mcp" ]
+    cwd: "${MCP_WIKIPEDIA_DIR}"
